@@ -24,7 +24,10 @@ class RiaruSiteScraper(SiteScraper):
     def get_articles(self):
         soup = self.get_html(self.url)
 
-        tags_with_links = soup.find_all('span', {'data-url': True})
+        try:
+            tags_with_links = soup.find_all('span', {'data-url': True})
+        except AttributeError as e:
+            return None
 
         all_links = []
         for i, link in enumerate(tags_with_links):
@@ -44,14 +47,17 @@ class RiaruSiteScraper(SiteScraper):
 
             article_link = link
 
-            if article_soup.find('div', class_='b-longread'):
-                article_title = article_soup.find('div', class_='endless__item')['data-title']
-                article_text = self.get_edit_longread_text(article_soup.find('div', {'class': 'b-longread'}))
-            else:
-                article_title = ' '.join(article_soup.find('h1', {'class': 'article__title'}).text.split())
+            try:
+                longread_type = article_soup.find('div', class_='b-longread')
+            except AttributeError as e:
+                return None
 
-                article_text = self.get_edit_article_text(article_soup.find('div', class_=re.compile('article__body')).
-                                                          find_all('div', class_='article__text'))
+            if longread_type:
+                article_title = self.get_longread_article_title(article_soup)
+                article_text = self.get_edit_longread_text(longread_type)
+            else:
+                article_title = self.get_article_title(article_soup)
+                article_text = self.get_edit_article_text(self.get_article_text(article_soup))
 
             articles.append({'name': article_domain_name,
                              'link': article_link,
@@ -60,21 +66,51 @@ class RiaruSiteScraper(SiteScraper):
                              })
         return articles
 
-    def get_edit_article_text(self, unedit_text):
-        list_of_texts = []
-        for tag in unedit_text:
-            list_of_texts.append(' '.join(tag.text.split()))
+    def get_longread_article_title(self, article_s):
+        try:
+            article_title_e = article_s.find('div', class_='endless__item')['data-title']
+        except AttributeError as e:
+            article_title_e = 'Тоже мне новость!'
+            return article_title_e
+        return article_title_e
 
-        edit_text = '\n'.join(list_of_texts)
+    def get_article_title(self, article_s):
+        try:
+            article_title_e = ' '.join(article_s.find('h1', {'class': 'article__title'}).text.split())
+        except AttributeError as e:
+            article_title_e = 'Тоже мне новость!'
+            return article_title_e
+        return article_title_e
+
+    def get_article_text(self, article_s):
+        try:
+            article_text_e = article_s.find('div', class_=re.compile('article__body')).\
+                                       find_all('div', class_='article__text')
+        except AttributeError as e:
+            return None
+        return article_text_e
+
+    def get_edit_article_text(self, unedit_text):
+        if unedit_text is not None:
+            list_of_texts = []
+            for tag in unedit_text:
+                list_of_texts.append(' '.join(tag.text.split()))
+
+            edit_text = '\n'.join(list_of_texts)
+        else:
+            edit_text = 'Эта страница не является новостной статьей!'
         return edit_text
 
     def get_edit_longread_text(self, unedit_text):
-        list_of_texts = []
-        for tag in unedit_text:
-            if tag.has_attr('data-pos'):
-                list_of_texts.append(tag.text)
+        if unedit_text is not None:
+            list_of_texts = []
+            for tag in unedit_text:
+                if tag.has_attr('data-pos'):
+                    list_of_texts.append(tag.text)
 
-        edit_text = '\n'.join(list_of_texts)
+            edit_text = '\n'.join(list_of_texts)
+        else:
+            edit_text = 'Эта страница не является новостной статьей!'
         return edit_text
 
 

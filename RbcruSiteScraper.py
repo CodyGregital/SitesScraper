@@ -24,8 +24,11 @@ class RbcruSiteScraper(SiteScraper):
     def get_articles(self):
         soup = self.get_html(self.url)
 
-        main_news = soup.find_all('a', href=re.compile('from=from_main'))
-        center_news = soup.find_all('a', href=re.compile('from=center'))
+        try:
+            main_news = soup.find_all('a', href=re.compile('from=from_main'))
+            center_news = soup.find_all('a', href=re.compile('from=center'))
+        except AttributeError as e:
+            return None
 
         tags_with_links = main_news + center_news
 
@@ -44,10 +47,9 @@ class RbcruSiteScraper(SiteScraper):
 
             article_link = link
 
-            article_title = [string for string in
-                             article_soup.find('div', class_='article__header__title').stripped_strings][0]
+            article_title = [string for string in self.get_article_title(article_soup)][0]
 
-            article_text = self.get_edit_article_text(article_soup.find('div', class_='article__text'))
+            article_text = self.get_edit_article_text(self.get_article_text(article_soup))
 
             articles.append({'name': article_domain_name,
                              'link': article_link,
@@ -56,11 +58,26 @@ class RbcruSiteScraper(SiteScraper):
                              })
         return articles
 
+    def get_article_title(self, article_s):
+        try:
+            article_title_e = article_s.find('div', class_='article__header__title').stripped_strings
+        except AttributeError as e:
+            article_title_e = 'Тоже мне новость!'
+            return article_title_e
+        return article_title_e
+
+    def get_article_text(self, article_s):
+        try:
+            article_text_e = article_s.find('div', class_='article__text')
+        except AttributeError as e:
+            return None
+        return article_text_e
+
     def get_edit_article_text(self, unedit_text):
         try:
             list_of_texts = []
             list_of_texts.append([string for string in
-                                 unedit_text.find('div', class_='article__text__overview').stripped_strings][0])
+                                  unedit_text.find('div', class_='article__text__overview').stripped_strings][0])
 
             for tag in unedit_text:
                 if tag.name == 'p':

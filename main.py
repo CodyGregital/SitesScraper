@@ -9,7 +9,7 @@ def main():
     # scraper.get_articles()
     # scraper = SiteScraperFactory.create_scraper('rbc.ru')
     # scraper.get_articles()
-    app.py
+    app.app.run()
 
 
 if __name__ == '__main__':
